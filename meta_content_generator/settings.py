@@ -95,6 +95,7 @@ logger = logging.getLogger(__name__)
 CONNECTION_STRING = os.environ.get('AZURE_POSTGRESQL_CONNECTIONSTRING')
 
 if not CONNECTION_STRING:
+    print("[DB INFO] AZURE_POSTGRESQL_CONNECTIONSTRING not found. Using SQLite fallback.")
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -114,8 +115,10 @@ else:
                 'PORT': conn_str_params.get('port', '5432'),
             }
         }
+        print(f"[DB INFO] PostgreSQL configured for host: {conn_str_params.get('host')}, db: {conn_str_params.get('dbname')}")
     except Exception as e:
-        logger.error(f"Error parsing AZURE_POSTGRESQL_CONNECTIONSTRING: {e}")
+        print(f"[DB ERROR] Error parsing AZURE_POSTGRESQL_CONNECTIONSTRING: {e}")
+        logger.exception("Failed to parse AZURE_POSTGRESQL_CONNECTIONSTRING")
         DATABASES = {
             'default': {
                 'ENGINE': 'django.db.backends.sqlite3',
@@ -229,54 +232,68 @@ else:
     MEDIA_URL = '/media/'
 
 
-# Logging Configuration for Error Logs
+# Logging Configuration for Error Logs (Visible in Azure SSH / Log Stream)
+import sys
+
+LOGS_DIR = os.path.join(BASE_DIR, 'logs')
+os.makedirs(LOGS_DIR, exist_ok=True)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'format': '[{asctime}] [{levelname}] [{name}:{lineno}] - {message}',
             'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
         },
         'simple': {
-            'format': '{levelname} {asctime} {message}',
+            'format': '[{levelname}] {message}',
             'style': '{',
         },
     },
     'handlers': {
         'console': {
+            'level': 'DEBUG',
             'class': 'logging.StreamHandler',
+            'stream': sys.stdout,
+            'formatter': 'verbose',
+        },
+        'file_error': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(LOGS_DIR, 'error.log'),
             'formatter': 'verbose',
         },
     },
     'root': {
-        'handlers': ['console'],
-        'level': 'WARNING',
+        'handlers': ['console', 'file_error'],
+        'level': 'INFO',
     },
     'loggers': {
         'django': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file_error'],
             'level': 'INFO',
-            'propagate': False,
+            'propagate': True,
         },
         'django.request': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file_error'],
             'level': 'ERROR',
             'propagate': False,
         },
         'django.db.backends': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file_error'],
             'level': 'ERROR',
             'propagate': False,
         },
-        'meta_content_generator': {
-            'handlers': ['console'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
+        'core': {
+            'handlers': ['console', 'file_error'],
+            'level': 'DEBUG',
             'propagate': False,
         },
-        'core': {
-            'handlers': ['console'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
+        'meta_content_generator': {
+            'handlers': ['console', 'file_error'],
+            'level': 'DEBUG',
             'propagate': False,
         },
     },

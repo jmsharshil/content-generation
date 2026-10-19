@@ -12,9 +12,11 @@ db.sqlite3
 db.sqlite3-journal
 *.sqlite3
 
-# Media & Staticfiles
+# Media & Staticfiles & Logs
 media/
 staticfiles/
+logs/
+*.log
 
 # Python cache & compiled files
 __pycache__/
