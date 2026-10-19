@@ -166,6 +166,7 @@ CORS_ALLOWED_ORIGINS = [
 
 CSRF_TRUSTED_ORIGINS = [
     "https://wonderful-mushroom-010038600.1.azurestaticapps.net",
+    "https://jms-content-generation-bte5bybmghdxb7ag.centralindia-01.azurewebsites.net"
 ]
 
 # DRF & JWT Settings
