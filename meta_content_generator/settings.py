@@ -158,6 +158,16 @@ STORAGES = {
 # CORS Settings
 CORS_ALLOW_ALL_ORIGINS = True
 
+CORS_ALLOWED_ORIGINS = [
+    "https://wonderful-mushroom-010038600.1.azurestaticapps.net",
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://wonderful-mushroom-010038600.1.azurestaticapps.net",
+]
+
 # DRF & JWT Settings
 from datetime import timedelta
 REST_FRAMEWORK = {

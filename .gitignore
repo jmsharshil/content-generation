@@ -1,21 +1,55 @@
 # Environments
 .env
-/.env
+.env.*
+!.env.example
 venv/
-/venv
 env/
-/env
+ENV/
+.venv/
 
 # Database
 db.sqlite3
+db.sqlite3-journal
+*.sqlite3
 
-# Media files
+# Media & Staticfiles
 media/
+staticfiles/
 
-# Python
+# Python cache & compiled files
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Pytest & tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # OS generated files
 .DS_Store
+Thumbs.db
