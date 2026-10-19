@@ -1,9 +1,11 @@
-﻿import os
+import os
 import io
 import base64
 import uuid
 import requests
 from django.conf import settings
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 from openai import AzureOpenAI
 try:
     from PIL import Image
@@ -202,17 +204,12 @@ def generate_image_for_post(prompt: str, brand_name: str = None, logo_path: str 
         except Exception as e:
             print(f"Image modification failed: {e}")
             
-        # 3. Save the image to the media folder
-        filename = f"generated_img_{uuid.uuid4().hex[:8]}.png"
-        save_dir = os.path.join(settings.MEDIA_ROOT, 'ai_images')
-        os.makedirs(save_dir, exist_ok=True)
-        
-        filepath = os.path.join(save_dir, filename)
-        with open(filepath, 'wb') as f:
-            f.write(image_bytes)
+        # 3. Save the image to the storage (Azure Blob or local filesystem)
+        filename = f"ai_images/generated_img_{uuid.uuid4().hex[:8]}.png"
+        saved_path = default_storage.save(filename, ContentFile(image_bytes))
             
-        # 4. Return the URL to access it via Django
-        return f"{settings.MEDIA_URL}ai_images/{filename}"
+        # 4. Return the URL to access it
+        return default_storage.url(saved_path)
     except Exception as e:
         print(f"Image generation failed: {e}")
         
@@ -307,15 +304,9 @@ def generate_image_with_gemini(prompt: str, brand_name: str = None, logo_path: s
                         
                         # We can add logo compositing here if needed, similar to old code
                         
-                        filename = f"gemini_img_{uuid.uuid4().hex[:8]}.png"
-                        save_dir = os.path.join(settings.MEDIA_ROOT, 'ai_images')
-                        os.makedirs(save_dir, exist_ok=True)
-                        
-                        filepath = os.path.join(save_dir, filename)
-                        with open(filepath, 'wb') as f:
-                            f.write(image_bytes)
-                            
-                        return f"{settings.MEDIA_URL}ai_images/{filename}"
+                        filename = f"ai_images/gemini_img_{uuid.uuid4().hex[:8]}.png"
+                        saved_path = default_storage.save(filename, ContentFile(image_bytes))
+                        return default_storage.url(saved_path)
             return None
         except requests.exceptions.HTTPError as e:
             if response.status_code in (429, 503) and attempt < 2:
@@ -366,19 +357,11 @@ def generate_video_with_gemini(prompt: str) -> str:
                     if b64_video:
                         import base64
                         import uuid
-                        from django.conf import settings
                         
                         video_bytes = base64.b64decode(b64_video)
-                        
-                        filename = f"gemini_video_{uuid.uuid4().hex[:8]}.mp4"
-                        save_dir = os.path.join(settings.MEDIA_ROOT, 'ai_videos')
-                        os.makedirs(save_dir, exist_ok=True)
-                        
-                        filepath = os.path.join(save_dir, filename)
-                        with open(filepath, 'wb') as f:
-                            f.write(video_bytes)
-                            
-                        return f"{settings.MEDIA_URL}ai_videos/{filename}"
+                        filename = f"ai_videos/gemini_video_{uuid.uuid4().hex[:8]}.mp4"
+                        saved_path = default_storage.save(filename, ContentFile(video_bytes))
+                        return default_storage.url(saved_path)
             return None
         except requests.exceptions.HTTPError as e:
             if response.status_code in (429, 503) and attempt < 2:

@@ -139,8 +139,12 @@ class GeneratePostView(views.APIView):
             pdf_data = ""
             documents = BrandAsset.objects.filter(business=business, asset_type='DOCUMENT')
             for doc in documents:
-                if doc.file and doc.file.path.endswith('.pdf'):
-                    pdf_data += extract_text_from_pdf(doc.file.path) + "\n\n"
+                if doc.file and doc.file.name.lower().endswith('.pdf'):
+                    try:
+                        with doc.file.open('rb') as f:
+                            pdf_data += extract_text_from_pdf(f) + "\n\n"
+                    except Exception as err:
+                        print(f"Error reading PDF {doc.file.name}: {err}")
             
             if profile.liked_posts:
                 liked_posts_info = f"\n\nCRITICAL: The user has previously approved these posts. Please analyze their style, formatting, and tone, and ensure your generated options strictly match this preferred style:\n{profile.liked_posts[-5000:]}\n"

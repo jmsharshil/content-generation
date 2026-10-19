@@ -12,15 +12,24 @@ def extract_text_from_url(url):
     except Exception as e:
         return ""
 
-def extract_text_from_pdf(file_path):
+def extract_text_from_pdf(file_source):
     try:
         text = ""
-        with open(file_path, 'rb') as file:
-            reader = PyPDF2.PdfReader(file)
+        # Handle both file path (str) and file-like objects (e.g. storage file)
+        if hasattr(file_source, 'read'):
+            reader = PyPDF2.PdfReader(file_source)
             for page in reader.pages:
                 extracted = page.extract_text()
                 if extracted:
                     text += extracted + "\n"
+        else:
+            with open(file_source, 'rb') as file:
+                reader = PyPDF2.PdfReader(file)
+                for page in reader.pages:
+                    extracted = page.extract_text()
+                    if extracted:
+                        text += extracted + "\n"
         return text[:10000] # Limit to 10k chars
     except Exception as e:
         return ""
+
