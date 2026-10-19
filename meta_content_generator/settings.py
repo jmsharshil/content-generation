@@ -28,7 +28,7 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = 'django-insecure-lu$l)cee5fetpi^sq8xnfll52)-dx)ovh&k7v-i7jl+@zk5(kt'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -89,39 +89,37 @@ WSGI_APPLICATION = 'meta_content_generator.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-import logging
-logger = logging.getLogger(__name__)
-
-CONNECTION_STRING = os.environ.get('AZURE_CONNECTIONSTRING')
-
-if not CONNECTION_STRING:
+if DEBUG:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+#     DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'gpc',          # Replace with your database name
+#         'USER': 'postgres',          # Replace with your database user
+#         'PASSWORD': 'admin',  # Replace with your database password
+#         'HOST': 'localhost',             # Use 'localhost' for local development or the IP of your DB server
+#         'PORT': '5432',                  # Default PostgreSQL port
+#     }
+# }
+
 else:
-    try:
-        conn_str_params = {pair.split('=')[0]: pair.split('=')[1] for pair in CONNECTION_STRING.split(' ') if '=' in pair}
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.postgresql',
-                'NAME': conn_str_params.get('dbname'),
-                'HOST': conn_str_params.get('host'),
-                'USER': conn_str_params.get('user'),
-                'PASSWORD': conn_str_params.get('password'),
-                'PORT': conn_str_params.get('port', '5432'),
-            }
+    CONNECTION_STRING = os.environ['AZURE_POSTGRESQL_CONNECTIONSTRING']
+    conn_str_params = {pair.split('=')[0]: pair.split('=')[1] for pair in CONNECTION_STRING.split(' ')}
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': conn_str_params['dbname'],
+            'HOST': conn_str_params['host'],
+            'USER': conn_str_params['user'],
+            'PASSWORD': conn_str_params['password'],
+            'PORT': conn_str_params.get('port', '5432'),
         }
-    except Exception as e:
-        logger.error(f"Error parsing AZURE_POSTGRESQL_CONNECTIONSTRING: {e}")
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.sqlite3',
-                'NAME': BASE_DIR / 'db.sqlite3',
-            }
-        }
+    }
 
 
 # Password validation
