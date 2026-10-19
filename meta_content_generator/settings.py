@@ -92,10 +92,9 @@ WSGI_APPLICATION = 'meta_content_generator.wsgi.application'
 import logging
 logger = logging.getLogger(__name__)
 
-CONNECTION_STRING = os.environ.get('AZURE_POSTGRESQL_CONNECTIONSTRING')
+CONNECTION_STRING = os.environ.get('AZURE_CONNECTIONSTRING')
 
 if not CONNECTION_STRING:
-    print("[DB INFO] AZURE_POSTGRESQL_CONNECTIONSTRING not found. Using SQLite fallback.")
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -115,10 +114,8 @@ else:
                 'PORT': conn_str_params.get('port', '5432'),
             }
         }
-        print(f"[DB INFO] PostgreSQL configured for host: {conn_str_params.get('host')}, db: {conn_str_params.get('dbname')}")
     except Exception as e:
-        print(f"[DB ERROR] Error parsing AZURE_POSTGRESQL_CONNECTIONSTRING: {e}")
-        logger.exception("Failed to parse AZURE_POSTGRESQL_CONNECTIONSTRING")
+        logger.error(f"Error parsing AZURE_POSTGRESQL_CONNECTIONSTRING: {e}")
         DATABASES = {
             'default': {
                 'ENGINE': 'django.db.backends.sqlite3',
@@ -232,70 +229,32 @@ else:
     MEDIA_URL = '/media/'
 
 
-# Logging Configuration for Error Logs (Visible in Azure SSH / Log Stream)
-import sys
+#log file
+if not DEBUG:
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'verbose': {
+                'format': '{levelname} {asctime} {module} {message}',
+                'style': '{',
+            },
+        },
+        'handlers': {
+            'file': {
+                'level': 'ERROR',
+                'class': 'logging.FileHandler',
+                'filename': '/home/site/wwwroot/django_errors.log',
+                'formatter': 'verbose',
+            },
+        },
+        'loggers': {
+            'django': {
+                'handlers': ['file'],
+                'level': 'ERROR',
+                'propagate': False,
+            },
+        },
+    }
 
-LOGS_DIR = os.path.join(BASE_DIR, 'logs')
-os.makedirs(LOGS_DIR, exist_ok=True)
-
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '[{asctime}] [{levelname}] [{name}:{lineno}] - {message}',
-            'style': '{',
-            'datefmt': '%Y-%m-%d %H:%M:%S',
-        },
-        'simple': {
-            'format': '[{levelname}] {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
-            'stream': sys.stdout,
-            'formatter': 'verbose',
-        },
-        'file_error': {
-            'level': 'ERROR',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(LOGS_DIR, 'error.log'),
-            'formatter': 'verbose',
-        },
-    },
-    'root': {
-        'handlers': ['console', 'file_error'],
-        'level': 'INFO',
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console', 'file_error'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'django.request': {
-            'handlers': ['console', 'file_error'],
-            'level': 'ERROR',
-            'propagate': False,
-        },
-        'django.db.backends': {
-            'handlers': ['console', 'file_error'],
-            'level': 'ERROR',
-            'propagate': False,
-        },
-        'core': {
-            'handlers': ['console', 'file_error'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-        'meta_content_generator': {
-            'handlers': ['console', 'file_error'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-    },
-}
 
