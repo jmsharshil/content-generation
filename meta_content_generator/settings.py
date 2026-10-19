@@ -108,7 +108,7 @@ if DEBUG:
 # }
 
 else:
-    CONNECTION_STRING = os.environ['AZURE_POSTGRESQL_CONNECTIONSTRING']
+    CONNECTION_STRING = os.getenv('AZURE_CONNECTION_STRING')
     conn_str_params = {pair.split('=')[0]: pair.split('=')[1] for pair in CONNECTION_STRING.split(' ')}
     DATABASES = {
         'default': {
