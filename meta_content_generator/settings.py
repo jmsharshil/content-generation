@@ -108,7 +108,7 @@ if DEBUG:
 # }
 
 else:
-    CONNECTION_STRING = os.getenv('AZURE_CONNECTION_STRING')
+    CONNECTION_STRING = os.getenv('AZURE_DB_CONNECTION_STRING') or os.getenv('AZURE_CONNECTION_STRING')
     conn_str_params = {pair.split('=')[0]: pair.split('=')[1] for pair in CONNECTION_STRING.split(' ')}
     DATABASES = {
         'default': {
@@ -165,7 +165,13 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 AZURE_ACCOUNT_NAME = os.getenv('AZURE_ACCOUNT_NAME')
 AZURE_ACCOUNT_KEY = os.getenv('AZURE_ACCOUNT_KEY')
 AZURE_CONTAINER = os.getenv('AZURE_CONTAINER', 'media')
-AZURE_CONNECTION_STRING = os.getenv('AZURE_CONNECTION_STRING')
+_raw_conn = os.getenv('AZURE_STORAGE_CONNECTION_STRING') or os.getenv('AZURE_CONNECTION_STRING')
+# Only pass connection string to django-storages if it looks like an Azure Storage connection string
+if _raw_conn and 'DefaultEndpointsProtocol=' in _raw_conn:
+    AZURE_CONNECTION_STRING = _raw_conn
+else:
+    AZURE_CONNECTION_STRING = None
+
 AZURE_CUSTOM_DOMAIN = os.getenv('AZURE_CUSTOM_DOMAIN')  # e.g., <account_name>.blob.core.windows.net
 
 has_azure_credentials = bool(AZURE_CONNECTION_STRING or (AZURE_ACCOUNT_NAME and AZURE_ACCOUNT_KEY))
