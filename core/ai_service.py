@@ -61,7 +61,7 @@ def generate_post_content(prompt: str) -> str:
         # Fallback to standard OpenAI if needed, or raise exception
         raise ValueError("Azure OpenAI configuration is missing or invalid.")
 
-def generate_image_for_post(prompt: str, brand_name: str = None, logo_path: str = None, website_url: str = None) -> str:
+def generate_image_for_post(prompt: str, brand_name: str = None, logo_path: str = None, website_url: str = None, logo_bytes: bytes = None) -> str:
     from dotenv import load_dotenv
     load_dotenv(override=True)
     
@@ -154,9 +154,20 @@ def generate_image_for_post(prompt: str, brand_name: str = None, logo_path: str 
             base_img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
             
             # Composite logo if available
-            if logo_path and os.path.exists(logo_path):
+            logo_img = None
+            if logo_bytes:
+                try:
+                    logo_img = Image.open(io.BytesIO(logo_bytes)).convert("RGBA")
+                except Exception as b_err:
+                    print(f"Failed to open logo from bytes: {b_err}")
+            elif logo_path and os.path.exists(logo_path):
                 try:
                     logo_img = Image.open(logo_path).convert("RGBA")
+                except Exception as p_err:
+                    print(f"Failed to open logo from path: {p_err}")
+
+            if logo_img:
+                try:
                     target_width = int(base_img.width * 0.15)
                     aspect_ratio = logo_img.height / logo_img.width
                     target_height = int(target_width * aspect_ratio)

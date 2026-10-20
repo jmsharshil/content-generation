@@ -209,7 +209,14 @@ class GeneratePostView(views.APIView):
             
             # Generate unique images for each option concurrently
             logo_asset = BrandAsset.objects.filter(business=business, asset_type='LOGO').first()
-            logo_path = logo_asset.file.path if logo_asset and logo_asset.file else None
+            logo_bytes = None
+            if logo_asset and logo_asset.file:
+                try:
+                    with logo_asset.file.open('rb') as lf:
+                        logo_bytes = lf.read()
+                except Exception as l_err:
+                    print(f"Failed to read logo file: {l_err}")
+                    logo_bytes = None
             
             def gen_media(args):
                 idx, opt_text = args
@@ -225,14 +232,14 @@ class GeneratePostView(views.APIView):
                     return ai_service.generate_image_for_post(
                         opt_text, 
                         brand_name=business.name if business else None, 
-                        logo_path=logo_path,
+                        logo_bytes=logo_bytes,
                         website_url=profile.website_url if profile else None
                     )
                 else:
                     return ai_service.generate_image_for_post(
                         opt_text, 
                         brand_name=business.name if business else None, 
-                        logo_path=logo_path,
+                        logo_bytes=logo_bytes,
                         website_url=profile.website_url if profile else None
                     )
                 
