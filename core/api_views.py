@@ -786,9 +786,48 @@ class MetaWebhookView(views.APIView):
                     value = change.get("value", {})
                     if field in ["feed", "comments"]:
                         
+                        # Check if it's an edited comment or a new comment
+                        verb = value.get("verb", "add")
+                        is_page_comment_add = value.get("item") == "comment" and verb == "add"
+                        is_page_comment_edit = value.get("item") == "comment" and verb in ["edit", "edited"]
+                        
+                        is_ig_comment_add = field == "comments" and verb != "edited"
+                        is_ig_comment_edit = field == "comments" and verb == "edited"
+                        
+                        # --- HANDLE EDITED COMMENT (Option 1: Update Existing Logs) ---
+                        if is_page_comment_edit or is_ig_comment_edit:
+                            from_data = value.get("from", {})
+                            commenter_name = from_data.get("username") if is_ig_comment_edit else from_data.get("name")
+                            new_comment_text = value.get("message", "") or value.get("text", "")
+                            
+                            attachment = value.get("photo") or value.get("video") or value.get("link")
+                            if not attachment and "attachment" in value:
+                                attachment = value.get("attachment", {}).get("url")
+                            if attachment:
+                                new_comment_text = f"{new_comment_text} [MEDIA:{attachment}]".strip() if new_comment_text else f"[MEDIA:{attachment}]"
+                                
+                            if new_comment_text and commenter_name:
+                                from .models import AutoReplyLog, AutoDMLog
+                                post_id_val = value.get("media", {}).get("id", "") if is_ig_comment_edit else value.get("post_id", "")
+                                
+                                # Update AutoReplyLog
+                                reply_logs = AutoReplyLog.objects.filter(post_id=post_id_val, commenter_name=commenter_name)
+                                if reply_logs.exists():
+                                    reply_log = reply_logs.first()
+                                    reply_log.comment_text = new_comment_text
+                                    reply_log.save()
+                                    
+                                # Update AutoDMLog
+                                dm_logs = AutoDMLog.objects.filter(post_id=post_id_val, recipient_name=commenter_name)
+                                if dm_logs.exists():
+                                    dm_log = dm_logs.first()
+                                    dm_log.comment_text = new_comment_text
+                                    dm_log.save()
+                            continue
+
                         # Check if it's a new comment
-                        is_page_comment = value.get("item") == "comment" and value.get("verb") == "add"
-                        is_ig_comment = field == "comments"
+                        is_page_comment = is_page_comment_add
+                        is_ig_comment = is_ig_comment_add
                         
                         if is_page_comment or is_ig_comment:
                             comment_id = value.get("comment_id") or value.get("id")
@@ -896,64 +935,7 @@ class MetaWebhookView(views.APIView):
                                                 )
                                         
                                          
-                    # === HANDLE LIKE EVENTS (Facebook & Instagram) ===
-                    is_fb_like = value.get("item") in ["like", "reaction"] and value.get("verb") == "add" and data.get("object") == "page"
-                    is_ig_like = field == "likes" and data.get("object") == "instagram"
-                    
-                    if is_fb_like or is_ig_like:
-                        if is_ig_like:
-                            # Instagram provides the liker's ID simply as 'id' in the value object for likes
-                            sender_id = value.get("id")
-                            sender_name = "IG User"
-                            post_id = value.get("media_id", "")
-                        else:
-                            sender_id = value.get("from", {}).get("id")
-                            sender_name = value.get("from", {}).get("name", "Unknown")
-                            post_id = value.get("post_id", "")
-                        
-                        # Don't DM our own page/account
-                        if sender_id and sender_id != target_id:
-                            from .models import MetaConnection, AutoReplySettings, AutoDMLog
-                            from django.db.models import Q
-                            
-                            connection = MetaConnection.objects.filter(
-                                Q(page_id=target_id) | Q(instagram_id=target_id),
-                                is_active=True
-                            ).first()
-                            
-                            if connection:
-                                dm_settings = AutoReplySettings.objects.filter(business=connection.business).first()
-                                
-                                if dm_settings:
-                                    dm_active = dm_settings.ig_dm_on_like_active if is_ig_like else dm_settings.fb_dm_on_like_active
-                                    dm_text = dm_settings.ig_dm_text if is_ig_like else dm_settings.fb_dm_text
-                                    
-                                    if dm_active and dm_text:
-                                        from . import meta_service
-                                        if is_ig_like:
-                                            res = meta_service.send_instagram_dm(
-                                                sender_id, dm_text, connection.instagram_id, connection.access_token, connection.page_id
-                                            )
-                                        else:
-                                            res = meta_service.send_facebook_dm(
-                                                sender_id, dm_text, connection.page_id, connection.access_token
-                                            )
-                                        
-                                        # Log the auto-DM
-                                        dm_status = 'failed' if res.get('error') else 'sent'
-                                        error_msg = str(res.get('error', '')) if res.get('error') else None
-                                        AutoDMLog.objects.create(
-                                            business=connection.business,
-                                            platform='instagram' if is_ig_like else 'facebook',
-                                            trigger_type='like',
-                                            recipient_name=sender_name,
-                                            recipient_id=sender_id,
-                                            dm_text=dm_text,
-                                            post_id=post_id,
-                                            status=dm_status,
-                                            error_message=error_msg
-                                        )
-                                        
+                    # (Note: Like events are no longer handled as Meta restricts unsolicited DMs on likes)
         return HttpResponse('EVENT_RECEIVED', status=200)
 
 class CreateAdScratchView(views.APIView):
