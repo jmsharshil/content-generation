@@ -218,6 +218,15 @@ class GeneratePostView(views.APIView):
                     print(f"Failed to read logo file: {l_err}")
                     logo_bytes = None
             
+            # Analyze user's past approved posts to observe their preferred visual and stylistic tendencies
+            approved_posts = GeneratedPost.objects.filter(business=business, status='APPROVED').order_by('-created_at')[:10]
+            preferred_style_summary = None
+            if approved_posts.exists():
+                # Extract stylistic themes from approved topics and content
+                approved_topics = [p.topic for p in approved_posts if p.topic]
+                if approved_topics:
+                    preferred_style_summary = f"clean, modern, highly practical aesthetics aligned with: {', '.join(approved_topics[:3])}"
+
             def gen_media(args):
                 idx, opt_text = args
                 # Generate video for odd indices, image for even indices
@@ -233,14 +242,18 @@ class GeneratePostView(views.APIView):
                         opt_text, 
                         brand_name=business.name if business else None, 
                         logo_bytes=logo_bytes,
-                        website_url=profile.website_url if profile else None
+                        website_url=profile.website_url if profile else None,
+                        variation_index=idx,
+                        preferred_style=preferred_style_summary
                     )
                 else:
                     return ai_service.generate_image_for_post(
                         opt_text, 
                         brand_name=business.name if business else None, 
                         logo_bytes=logo_bytes,
-                        website_url=profile.website_url if profile else None
+                        website_url=profile.website_url if profile else None,
+                        variation_index=idx,
+                        preferred_style=preferred_style_summary
                     )
                 
             media_urls = []

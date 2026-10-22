@@ -61,7 +61,7 @@ def generate_post_content(prompt: str) -> str:
         # Fallback to standard OpenAI if needed, or raise exception
         raise ValueError("Azure OpenAI configuration is missing or invalid.")
 
-def generate_image_for_post(prompt: str, brand_name: str = None, logo_path: str = None, website_url: str = None, logo_bytes: bytes = None) -> str:
+def generate_image_for_post(prompt: str, brand_name: str = None, logo_path: str = None, website_url: str = None, logo_bytes: bytes = None, variation_index: int = 0, preferred_style: str = None) -> str:
     from dotenv import load_dotenv
     load_dotenv(override=True)
     
@@ -80,15 +80,37 @@ def generate_image_for_post(prompt: str, brand_name: str = None, logo_path: str 
             azure_endpoint=endpoint_url
         )
         
-        # Create an image generation prompt based on the content
+        # 5 distinct visual styles & perspectives to ensure each generated card has a unique composition
+        styles = [
+            # 0: Minimalist Flat-lay / Knolling Desk Setup
+            "Clean overhead flat-lay / knolling photography, minimalist aesthetic, natural diffuse daylight, organized premium stationery, notebook with blueprint sketches, subtle tech accessories on matte marble or warm oak surface. Top-down view.",
+            # 1: Close-up Macro / Tangible Metaphor
+            "Intimate macro close-up photography, shallow depth of field with gorgeous bokeh. Focus on intricate precision gears, elegant metallic hourglass, or glowing fiber-optic network connectors. Dramatic side rim lighting.",
+            # 2: Modern Architectural Interior / Studio Atmosphere
+            "Wide architectural commercial photography of a sleek futuristic design studio or glass boardroom, sunbeams streaming through floor-to-ceiling windows, sculptural modern furniture, ultra-clean aesthetic, airy atmosphere.",
+            # 3: Sleek Tech Object / Floating Isometric Metaphor
+            "Studio product photography, high-end dark luxury theme or matte ceramic texture, sharp directional spotlight, abstract geometric prism or clean glass crystal reflecting subtle data rays. Crisp high-end catalog look.",
+            # 4: Editorial Graphic & Concept Still-Life
+            "Contemporary magazine editorial still-life, bold creative composition, textured concrete or linen background, subtle natural shadows, artistic arrangement of physical props symbolizing growth and clarity."
+        ]
+        
+        current_style = styles[variation_index % len(styles)]
+        
+        # If user has demonstrated a strong approved style preference, blend in subtle elements of it
+        user_preference_guidance = ""
+        if preferred_style:
+            user_preference_guidance = f"User Approval Aesthetic Tendency: The user frequently approves {preferred_style}. Favor similar lighting, elegance, and premium restraint. "
+        
         import uuid
         image_prompt = (
-            "Create a highly aesthetic, premium, and visually striking image suitable for a modern social media campaign. "
-            "CRITICAL: There must be absolutely NO human faces or people in the image. The visuals must be strictly related to the core topic, objects, or abstract concepts from the context. "
-            "Extract a very short, catchy 3-to-5 word hook or title from the following context and write it boldly and beautifully in the center of the image using modern typography. "
+            f"Style & Composition: {current_style} "
+            f"{user_preference_guidance}"
+            "CRITICAL: Absolutely NO human faces or people in the image. Visuals must be strictly realistic, authentic, and tangible. "
+            "NEGATIVE CONSTRAINTS: Absolutely no repetitive laptop-on-desk clichés, no cartoonish styles, no cheap 3D plastic renders, no messy multi-color gradients, no childish vectors, no distorted hands. "
+            "Extract a short, powerful 3-to-4 word hook from the context and render it cleanly with elegant, minimalist, sharp modern typography integrated tastefully into the composition. "
             "DO NOT write the brand name anywhere in the image, as a logo will be overlaid later. "
-            f"UNIQUE BATCH ID: {uuid.uuid4()} "
-            f"Context of the post: {prompt[:800]}"
+            f"BATCH SEED: {uuid.uuid4()} "
+            f"Topic Context: {prompt[:700]}"
         )
         
         try:
@@ -103,8 +125,8 @@ def generate_image_for_post(prompt: str, brand_name: str = None, logo_path: str 
             print(f"Initial image generation failed, retrying with safe fallback prompt. Error: {e}")
             try:
                 fallback_prompt = (
-                    "Create a highly aesthetic, premium, and visually striking abstract gradient background suitable for a modern social media campaign. "
-                    "There must be absolutely NO human faces or people. Use beautiful calming colors."
+                    f"Clean aesthetic still-life photography: {current_style}. {user_preference_guidance}"
+                    "CRITICAL: Absolutely NO human faces or people. No generic cartoon gradients."
                 )
                 response = client.images.generate(
                     model=model_name,
